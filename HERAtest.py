@@ -10,6 +10,8 @@ import numpy as np
 from datetime import datetime
 import math
 import random
+import matplotlib.pyplot as plt
+import matplotlib.colors as clr
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-c', '--clear', action='store_true', help='clear the display on exit')
@@ -341,6 +343,43 @@ def ant_status():
     strip.show()
     time.sleep(120)
 
+def colorscale(mag,cmin,cmax):
+# Returns a tuple of floats between 0 and 255 for RGB, scaling from green to yellow.
+    try: x = float(mag-cmin)/(cmax-cmin) # scales from 0 to 1
+    except ZeroDivisionError: x=0.5 # cmax==cmin
+    r = int(x*255)
+    g = 255
+    b = int(75-(x*75))
+    return r,g,b
+
+def ant_status_scaling():
+# Reads the live antenna status csv from HERAnow and outputs appropriate colors for each antenna. The worst dipole is always shown.
+    print('Displaying Live Antenna Status')
+    status = np.array(pd.read_csv('http://heranow.reionization.org/ant_stats.csv', header=0, names=['Ant','Auto','PAM','ADC','ADC RMS','FEM T','FEM P','EQ']))
+    e_status = np.empty((0,8))
+    n_status = np.empty((0,8))
+    for i in status:
+        antname = i[0]
+        antnum = int(antname[2:len(antname)-1])
+        antdir = antname[len(antname)-1:len(antname)]
+        if antdir=='e' and -1<antnum<320: e_status = np.append(e_status,[i],axis=0)
+        elif antdir=='n' and -1<antnum<320: n_status = np.append(n_status,[i],axis=0)
+    for j in range(320):
+        e_autocorr = e_status[j][1]
+        n_autocorr = n_status[j][1]
+        if pd.isnull(e_autocorr)==True or pd.isnull(n_autocorr)==True: strip.setPixelColorRGB(scheme[j],255,127,0) # weird nan, orange
+        elif e_autocorr=='CONST' or n_autocorr=='CONST': strip.setPixelColorRGB(scheme[j],80,0,255) # offline, blue
+        elif e_autocorr=='OFF' or n_autocorr=='OFF': strip.setPixelColorRGB(scheme[j],0,0,0) # not built, off
+        else:
+            if int(float(e_autocorr))>=10 and int(float(n_autocorr))>=10:
+                avg_autocorr = (float(e_autocorr)+float(n_autocorr))/2
+                r,g,b = colorscale(avg_autocorr,10,23)
+                strip.setPixelColorRGB(scheme[j],r,g,b) #good, scaled green to yellow
+            elif int(float(e_autocorr))<10 or int(float(n_autocorr))<10: strip.setPixelColorRGB(scheme[j],255,50,0) # bad, red
+            else: strip.setPixelColorRGB(scheme[j],0,0,0) # not in csv, off
+    strip.show()
+    time.sleep(120)
+
 def adopt_antenna():
 # A fun outreach demo, let kids choose and color an antenna to make a collage by the end!
     print(' ')
@@ -389,6 +428,13 @@ def hera():
     strip.show()
     time.sleep(10)
 
+def image_mapper(file):
+    image_map = np.array(pd.read_csv(file, header=0, names=['r','g','b']))
+    for i in range(len(image_map)): strip.setPixelColorRGB(i,int(image_map[i][0]),int(image_map[i][1]),int(image_map[i][2]))
+    strip.show()
+    time.sleep(60)
+
+
 # main code
 print('Starting')
 strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL)
@@ -410,7 +456,7 @@ try:
 
         #ant_status_ew(3)
         #ant_status_ns(3)
-        ant_status()
+        ant_status_scaling()
 
         #adopt_antenna()
 
@@ -418,6 +464,8 @@ try:
         #time.sleep(5)
 
         #hera()
+
+        #image_mapper('treergb')
 
 except KeyboardInterrupt:
     if args.clear:
