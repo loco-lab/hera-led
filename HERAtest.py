@@ -378,7 +378,10 @@ def ant_status_scaling():
             elif int(float(e_autocorr))<10 or int(float(n_autocorr))<10: strip.setPixelColorRGB(scheme[j],255,50,0) # bad, red
             else: strip.setPixelColorRGB(scheme[j],0,0,0) # not in csv, off
     strip.show()
-    time.sleep(120)
+    seconds = str(datetime.now().time())[6:8]
+    for k in sec_ring[:len(sec_ring)-(59-int(seconds))]: strip.setPixelColorRGB(secs_dict[seconds],200,200,200)
+    strip.show()    
+    time.sleep(.5)
 
 def adopt_antenna():
 # A fun outreach demo, let kids choose and color an antenna to make a collage by the end!
