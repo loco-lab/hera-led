@@ -117,7 +117,6 @@ def colorscale(mag,cmin,cmax):
 
 def ant_status_scaling():
 # Reads the live antenna status csv from HERAnow and outputs appropriate colors for each antenna. The worst dipole is always shown.
-    print('Displaying Live Antenna Status')
     status = np.array(pd.read_csv('http://heranow.reionization.org/ant_stats.csv', header=0, names=['Ant','Auto','PAM','ADC','ADC RMS','FEM T','FEM P','EQ']))
     e_status = np.empty((0,8))
     n_status = np.empty((0,8))
