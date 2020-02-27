@@ -18,7 +18,7 @@ parser.add_argument('-c', '--clear', action='store_true', help='clear the displa
 args = parser.parse_args()
 
 # LED strip configuration:
-LED_COUNT      = 320     # Number of LED pixels.
+LED_COUNT      = 350     # Number of LED pixels.
 LED_PIN        = 18      # GPIO pin connected to the pixels (18 uses PWM!).
 LED_FREQ_HZ    = 800000  # LED signal frequency in hertz (usually 800khz)
 LED_DMA        = 10      # DMA channel to use for generating signal (try 10)
@@ -129,7 +129,7 @@ def ant_status_scaling():
     for j in range(320):
         e_autocorr = e_status[j][1]
         n_autocorr = n_status[j][1]
-        if pd.isnull(e_autocorr)==True or pd.isnull(n_autocorr)==True: strip.setPixelColorRGB(scheme[j],255,127,0) # weird nan, orange
+        if pd.isnull(e_autocorr)==True or pd.isnull(n_autocorr)==True: strip.setPixelColorRGB(scheme[j],random.randrange(50,255,1),random.randrange(50,255,1),0) # weird nan, orange (255,127,0)
         elif e_autocorr=='CONST' or n_autocorr=='CONST': strip.setPixelColorRGB(scheme[j],80,0,255) # offline, blue
         elif e_autocorr=='OFF' or n_autocorr=='OFF': strip.setPixelColorRGB(scheme[j],0,0,0) # not built, off
         else:
