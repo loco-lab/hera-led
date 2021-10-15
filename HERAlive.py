@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #Author: Mickey Horn
-#custom code testing for HERA LED model
+#Live status script for HERA LED model. Ran automatically at startup via systemd.
 
 import time
 from neopixel import *
@@ -117,29 +117,34 @@ def colorscale(mag,cmin,cmax):
 
 def ant_status_scaling():
 # Reads the live antenna status csv from HERAnow and outputs appropriate colors for each antenna. The worst dipole is always shown.
-    status = np.array(pd.read_csv('http://heranow.reionization.org/ant_stats.csv', header=0, names=['Ant','Auto','PAM','ADC','ADC RMS','FEM T','FEM P','EQ']))
-    e_status = np.empty((0,8))
-    n_status = np.empty((0,8))
+    status = np.array(pd.read_csv('http://heranow.reionization.org/media/ant_stats.csv', header=0, names=['Ant','Pol','Constructed','Node','Fem Switch','Apriori','Spectra','PAM Power','ADC Power','ADC RMS','FEM IMU Theta','FEM IMU Phi','EQ Coeffs']))
+    e_status = np.empty((0,13))
+    n_status = np.empty((0,13))
+    
     for i in status:
-        antname = i[0]
-        antnum = int(antname[2:len(antname)-1])
-        antdir = antname[len(antname)-1:len(antname)]
-        if antdir=='e' and -1<antnum<320: e_status = np.append(e_status,[i],axis=0)
-        elif antdir=='n' and -1<antnum<320: n_status = np.append(n_status,[i],axis=0)
+        antnum = i[0]
+        antpol = i[1]
+        if antpol=='e' and -1<antnum<320: e_status = np.append(e_status,[i],axis=0)
+        elif antpol=='n' and -1<antnum<320: n_status = np.append(n_status,[i],axis=0)
+    
     for j in range(320):
-        e_autocorr = e_status[j][1]
-        n_autocorr = n_status[j][1]
-        if pd.isnull(e_autocorr)==True or pd.isnull(n_autocorr)==True: strip.setPixelColorRGB(scheme[j],255,127,0) # weird nan, orange
-        elif e_autocorr=='CONST' or n_autocorr=='CONST': strip.setPixelColorRGB(scheme[j],80,0,255) # offline, blue
-        elif e_autocorr=='OFF' or n_autocorr=='OFF': strip.setPixelColorRGB(scheme[j],0,0,0) # not built, off
+        e_constructed = e_status[j][2]
+        n_constructed = n_status[j][2]
+        e_spectra = e_status[j][6]
+        n_spectra = n_status[j][6]
+
+        if e_constructed==False or n_constructed==False: strip.setPixelColorRGB(scheme[j],0,0,0) # not built, off
         else:
-            if int(float(e_autocorr))>=-40 and int(float(n_autocorr))>=-40:
-                avg_autocorr = (float(e_autocorr)+float(n_autocorr))/2
-                r,g,b = colorscale(avg_autocorr,1-40,-20)
+            if pd.isnull(e_spectra)==True or pd.isnull(n_spectra)==True: strip.setPixelColorRGB(scheme[j],0,127,255) # offline, blue
+            elif int(float(e_spectra))>=-45 and int(float(n_spectra))>=-45:
+                avg_spectra = (float(e_spectra)+float(n_spectra))/2
+                r,g,b = colorscale(avg_spectra,-100,-10)
+                print(r,g,b)
                 strip.setPixelColorRGB(scheme[j],r,g,b) #good, scaled green to yellow
-            elif int(float(e_autocorr))<-40 or int(float(n_autocorr))<-40: strip.setPixelColorRGB(scheme[j],255,50,0) # bad, red
-            elif int(float(e_autocorr))>-20 or int(float(n_autocorr))>-20: strip.setPixelColorRGB(scheme[j],255,50,0) # bad, red
-            else: strip.setPixelColorRGB(scheme[j],0,0,0) # not in csv, off
+            elif int(float(e_spectra))<-45 or int(float(n_spectra))<-45: strip.setPixelColorRGB(scheme[j],255,50,0) # bad, red
+            elif int(float(e_spectra))>-20 or int(float(n_spectra))>-20: strip.setPixelColorRGB(scheme[j],255,50,0) # bad, red
+            #else: strip.setPixelColorRGB(scheme[j],0,0,0) # not in csv, off
+
     strip.show()
     seconds = str(datetime.now().time())[6:8]
     for k in sec_ring: strip.setPixelColorRGB(secs_dict[seconds],200,200,200)
