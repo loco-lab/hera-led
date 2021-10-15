@@ -7,6 +7,7 @@ HERAtest.py is a playground with many different displays to use. Comment and unc
 
 
 
+
 On the LoCo lab board, HERAlive is setup to run via systemd so that it automatically begins at startup. 
 
 If it is not running, use the following sequence of commands to restart it.
