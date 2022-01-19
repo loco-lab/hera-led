@@ -22,11 +22,11 @@ LED_COUNT      = 350     # Number of LED pixels.
 LED_PIN        = 18      # GPIO pin connected to the pixels (18 uses PWM!).
 LED_FREQ_HZ    = 800000  # LED signal frequency in hertz (usually 800khz)
 LED_DMA        = 10      # DMA channel to use for generating signal (try 10)
-LED_BRIGHTNESS = 55     # Set to 0 for darkest and 255 for brightest
+LED_BRIGHTNESS = 55      # Set to 0 for darkest and 255 for brightest
 LED_INVERT     = False   # True to invert the signal (when using NPN transistor level shift)
 LED_CHANNEL    = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
 
-# antenna number : LED number
+# Correlates the antenna number defined by HERA to the LED number in the sequential string. Antenna#:LED#
 scheme = {
     0:10, 1:9, 2:8, 3:7, 4:6, 5:5, 6:4, 7:3, 8:2, 9:1, 10:0,
     11:11, 12:12, 13:13, 14:14, 15:15, 16:16, 17:17, 18:18, 19:19, 20:20, 21:21,
@@ -69,8 +69,8 @@ scheme = {
     319:209
 }
 
-# clock hands
-hourhand01 = [319,298,297,276,275,254,253,232,231]
+# LED numbers of clock hands.
+hourhand01 = [319,298,297,276,275,254,253,232,231] # For example, a line pointing from the center to 1 o'clock.
 hourhand02 = [110,131,152,173,194]
 hourhand03 = [110,128,132,146,154,164,176,182,198]
 hourhand04 = [110,127,134,143,158]
@@ -84,9 +84,11 @@ hourhand11 = [319,299,295,279,271,259,247,239,223]
 hourhand12 = [319,296,273,250,227]
 hourhands = [hourhand01,hourhand02,hourhand03,hourhand04,hourhand05,hourhand06,hourhand07,hourhand08,hourhand09,hourhand10,hourhand11,hourhand12]
 
+# All LEDs on the outer edge, starting from the top center and going clockwise.
 sec_ring = [214,213,212,211,210,209,208,207,206,205,204,203,202,201,200,199,180,179,160,159,140,139,120,119,0,1,2,3,4,5,6,7,8,9,10,11,32,33,54,55,76,77,98,99,309,308,287,286,265,264,243,242,221,220,219,218,217,216,215]
 
-secs_dict = { # correlates the second with a point on the edge
+# Correlates seconds in time with an LED on the edge. Second:LED#
+secs_dict = { 
     '00':214, '01':213, '02':212, '03':211, '04':210,
     '05':209, '06':208, '07':207, '08':206, '09':205,
     '10':204, '11':203, '12':202, '13':201, '14':200,
@@ -108,8 +110,9 @@ def clear():
 
 def colorscale(mag,cmin,cmax):
 # Returns a tuple of floats between 0 and 255 for RGB, scaling from green to yellow.
-    try: x = float(mag-cmin)/(cmax-cmin) # scales from 0 to 1
-    except ZeroDivisionError: x=0.5 # cmax==cmin
+# Typically used where mag is the magnitude of an antenna's spectra, cmin is a lower boundary of all antenna spectra, and cmax is an upper boundary.
+    try: x = float(mag-cmin)/(cmax-cmin) # x scales from 0 to 1
+    except ZeroDivisionError: x=0.5 # In case cmax==cmin.
     r = int(x*255)
     g = 255
     b = int(75-(x*75))
@@ -121,46 +124,47 @@ def ant_status_scaling():
     e_status = np.empty((0,13))
     n_status = np.empty((0,13))
     
-    for i in status:
-        antnum = i[0]
-        antpol = i[1]
+    for i in status: # Loop through the np array created from the csv.
+        antnum = i[0] # Get the antenna number.
+        antpol = i[1] # Get the antenna polarization (each antenna has a NS and EW polarization/dipole). The "worst" one is shown.
+        # Organizes the original array into separate arrays for NS and EW dipoles.
         if antpol=='e' and -1<antnum<320: e_status = np.append(e_status,[i],axis=0)
         elif antpol=='n' and -1<antnum<320: n_status = np.append(n_status,[i],axis=0)
     
     for j in range(320):
-        e_constructed = e_status[j][2]
+        e_constructed = e_status[j][2] # Reads the 'Constructed' column of the CSV to determine if the antenna has been built. True or False.
         n_constructed = n_status[j][2]
-        e_spectra = e_status[j][6]
+        e_spectra = e_status[j][6] #Reads the 'Spectra' column of the CSV which is used to scale LED color on working antennas. Integer.
         n_spectra = n_status[j][6]
 
-        if e_constructed==False or n_constructed==False: strip.setPixelColorRGB(scheme[j],0,0,0) # not built, off
+        if e_constructed==False or n_constructed==False: strip.setPixelColorRGB(scheme[j],0,0,0) # If one dipole in the antenna is not built, LED is off.
         else:
-            if pd.isnull(e_spectra)==True or pd.isnull(n_spectra)==True: strip.setPixelColorRGB(scheme[j],0,127,255) # offline, blue
-            elif int(float(e_spectra))>=-45 and int(float(n_spectra))>=-45:
-                avg_spectra = (float(e_spectra)+float(n_spectra))/2
-                r,g,b = colorscale(avg_spectra,-100,-10)
+            if pd.isnull(e_spectra)==True or pd.isnull(n_spectra)==True: strip.setPixelColorRGB(scheme[j],0,127,255) # If one dipole in the antenna is offline, LED is blue. Offline is defined by a null in the 'Spectra' column.
+            elif int(float(e_spectra))>=-45 and int(float(n_spectra))>=-45: # If both dipoles have an acceptable Spectra value
+                avg_spectra = (float(e_spectra)+float(n_spectra))/2 # Calculate the average Spectra
+                r,g,b = colorscale(avg_spectra,-100,-10) # Apply the colorscale using the average Spectra as the magnitude. Cmin and Cmax can be tweaked to adjust the amount of color difference.
                 print(r,g,b)
-                strip.setPixelColorRGB(scheme[j],r,g,b) #good, scaled green to yellow
-            elif int(float(e_spectra))<-45 or int(float(n_spectra))<-45: strip.setPixelColorRGB(scheme[j],255,50,0) # bad, red
-            elif int(float(e_spectra))>-20 or int(float(n_spectra))>-20: strip.setPixelColorRGB(scheme[j],255,50,0) # bad, red
-            #else: strip.setPixelColorRGB(scheme[j],0,0,0) # not in csv, off
+                strip.setPixelColorRGB(scheme[j],r,g,b) # If the antenna spectra is good, LED is scaled green to yellow.
+            elif int(float(e_spectra))<-45 or int(float(n_spectra))<-45: strip.setPixelColorRGB(scheme[j],255,50,0) # If one dipole in the antenna has a spectra outside the expected range, LED is red.
+            elif int(float(e_spectra))>-20 or int(float(n_spectra))>-20: strip.setPixelColorRGB(scheme[j],255,50,0) # If one dipole in the antenna has a spectra outside the expected range, LED is red.
+            #else: strip.setPixelColorRGB(scheme[j],0,0,0) # If the antenna is not in the csv, LED is off.
 
-    strip.show()
-    seconds = str(datetime.now().time())[6:8]
-    for k in sec_ring: strip.setPixelColorRGB(secs_dict[seconds],200,200,200)
-    strip.show()    
-    time.sleep(.75)
+    strip.show() # Displays the antenna status.
+    seconds = str(datetime.now().time())[6:8] # Gets the current time and saves the second.
+    for k in sec_ring: strip.setPixelColorRGB(secs_dict[seconds],200,200,200) # Flashes an LED to represent the current second white.
+    strip.show()   
+    time.sleep(.75) # Sleep before repeating. May need to be higher to reduce dashboard load.
 
 # main code
 print('Starting')
-strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL)
+strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL) # Initializes the LED string.
 strip.begin()
 
 try:
     while True:
-        ant_status_scaling()
+        ant_status_scaling() # Run the antenna status function always.
 
-except KeyboardInterrupt:
+except KeyboardInterrupt: # Clear the display if function interrupted.
     if args.clear:
         print('Clear')
         clear()
