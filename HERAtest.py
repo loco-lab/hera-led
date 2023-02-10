@@ -27,7 +27,7 @@ LED_BRIGHTNESS = 55     # Set to 0 for darkest and 255 for brightest
 LED_INVERT     = False   # True to invert the signal (when using NPN transistor level shift)
 LED_CHANNEL    = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
 
-# antenna number : LED number
+# Correlates the antenna number defined by HERA to the LED number in the sequential string. Antenna#:LED#
 scheme = {
     0:10, 1:9, 2:8, 3:7, 4:6, 5:5, 6:4, 7:3, 8:2, 9:1, 10:0,
     11:11, 12:12, 13:13, 14:14, 15:15, 16:16, 17:17, 18:18, 19:19, 20:20, 21:21,
