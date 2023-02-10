@@ -12,6 +12,7 @@ import math
 import random
 import matplotlib.pyplot as plt
 import matplotlib.colors as clr
+import urllib2
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-c', '--clear', action='store_true', help='clear the display on exit')
@@ -361,9 +362,10 @@ def ant_status_scaling():
     for i in status:
         antnum = i[0]
         antpol = i[1]
+        print(antnum,antpol)
         if antpol=='e' and -1<antnum<320: e_status = np.append(e_status,[i],axis=0)
         elif antpol=='n' and -1<antnum<320: n_status = np.append(n_status,[i],axis=0)
-    
+    print(e_status)
     for j in range(320):
         e_constructed = e_status[j][2]
         n_constructed = n_status[j][2]
@@ -386,6 +388,99 @@ def ant_status_scaling():
     for k in sec_ring: strip.setPixelColorRGB(secs_dict[seconds],200,200,200)
     strip.show()    
     time.sleep(.75)
+def draw_hera_status(status):
+      #input a status array (numpy with columns)
+      #draw it on the led board
+    e_status = np.empty((0,13))
+    n_status = np.empty((0,13))
+    for i in status:
+        antnum = i[0]
+        antpol = i[1]
+        if antpol=='e' and -1<antnum<320: e_status = np.append(e_status,[i],axis=0)
+        elif antpol=='n' and -1<antnum<320: n_status = np.append(n_status,[i],axis=0)
+
+    for j in range(320):
+        e_constructed = e_status[j][2]
+        n_constructed = n_status[j][2]
+        e_spectra = e_status[j][6]
+        n_spectra = n_status[j][6]
+
+        if e_constructed==False or n_constructed==False: strip.setPixelColorRGB(scheme[j],0,0,0) # not built, off
+        else:
+            if pd.isnull(e_spectra)==True or pd.isnull(n_spectra)==True: strip.setPixelColorRGB(scheme[j],0,127,255) # offline, blue
+            elif int(float(e_spectra))>=-45 and int(float(n_spectra))>=-45:
+                avg_spectra = (float(e_spectra)+float(n_spectra))/2
+                r,g,b = colorscale(avg_spectra,-100,-10)
+                strip.setPixelColorRGB(scheme[j],r,g,b) #good, scaled green to yellow
+            elif int(float(e_spectra))<-45 or int(float(n_spectra))<-45: strip.setPixelColorRGB(scheme[j],255,50,0) # bad, red
+            elif int(float(e_spectra))>-20 or int(float(n_spectra))>-20: strip.setPixelColorRGB(scheme[j],255,50,0) # bad, red
+            #else: strip.setPixelColorRGB(scheme[j],0,0,0) # not in csv, off
+
+            strip.show()
+def draw_time_dot():
+    #put a dot on the edge of the HERA board to indicate seconds.
+    seconds = str(datetime.now().time())[6:8]
+    for k in sec_ring: 
+        strip.setPixelColorRGB(secs_dict[seconds],200,200,200)
+def get_hera_status():
+     return np.array(pd.read_csv('http://heranow.reionization.org/media/ant_stats.csv', 
+                   header=0, 
+                    names=['Ant','Pol','Constructed','Node','Fem Switch',
+                    'Apriori','Spectra','PAM Power','ADC Power','ADC RMS',
+                    'FEM IMU Theta','FEM IMU Phi','EQ Coeffs']))
+def ant_status_scaling_test(status):
+# Reads the live antenna status csv from HERAnow and outputs appropriate colors for each antenna. The worst dipole is always shown.
+# only reads the status at the top of the minute
+    #status = np.empty((700,13))
+    connection_error=False
+    seconds = str(datetime.now().time())[6:8]
+    e_status = np.empty((0,13))
+    n_status = np.empty((0,13))
+    if seconds == '00':  
+        try:
+            status = np.array(pd.read_csv('http://heranow.reionization.org/media/ant_stats.csv', 
+                   header=0, 
+                    names=['Ant','Pol','Constructed','Node','Fem Switch',
+                    'Apriori','Spectra','PAM Power','ADC Power','ADC RMS',
+                    'FEM IMU Theta','FEM IMU Phi','EQ Coeffs']))
+        except(urllib2.URLError):
+            print("connection error")
+            connection_error = True
+    for i in status:
+        antnum = i[0]
+        antpol = i[1]
+        if antpol=='e' and -1<antnum<320: e_status = np.append(e_status,[i],axis=0)
+        elif antpol=='n' and -1<antnum<320: n_status = np.append(n_status,[i],axis=0)
+    try:
+        for j in range(320):
+            e_constructed = e_status[j][2]
+            n_constructed = n_status[j][2]
+            e_spectra = e_status[j][6]
+            n_spectra = n_status[j][6]
+
+            if e_constructed==False or n_constructed==False: strip.setPixelColorRGB(scheme[j],0,0,0) # not built, off
+            else:
+                if pd.isnull(e_spectra)==True or pd.isnull(n_spectra)==True: strip.setPixelColorRGB(scheme[j],0,127,255) # offline, blue
+                elif int(float(e_spectra))>=-45 and int(float(n_spectra))>=-45:
+                    avg_spectra = (float(e_spectra)+float(n_spectra))/2
+                    r,g,b = colorscale(avg_spectra,-100,-10)
+                    strip.setPixelColorRGB(scheme[j],r,g,b) #good, scaled green to yellow
+                elif int(float(e_spectra))<-45 or int(float(n_spectra))<-45: strip.setPixelColorRGB(scheme[j],255,50,0) # bad, red
+                elif int(float(e_spectra))>-20 or int(float(n_spectra))>-20: strip.setPixelColorRGB(scheme[j],255,50,0) # bad, red
+                #else: strip.setPixelColorRGB(scheme[j],0,0,0) # not in csv, off
+
+                strip.show()
+    except(IndexError):
+        print("cant even")
+    seconds = str(datetime.now().time())[6:8]
+    #for k in sec_ring: strip.setPixelColorRGB(secs_dict[seconds],200,200,200)
+    if connection_error:
+        strip.setPixelColorRGB(secs_dict[seconds],255,0,0)
+    else:
+        strip.setPixelColorRGB(secs_dict[seconds],200,200,200)
+    strip.show()    
+    time.sleep(.75)
+    return status
 
 def adopt_antenna():
 # A fun outreach demo, let kids choose and color an antenna to make a collage by the end!
@@ -448,6 +543,7 @@ strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, 
 strip.begin()
 
 try:
+    status = np.empty((700,13))
     while True:
         #moving_shapes(sixths,rainbowcolors,-1,.1)
         #moving_shapes(sixths,rainbowcolors,-1,.1)
@@ -455,7 +551,7 @@ try:
         #moving_shapes(rings,ringcolors,1,.1)
         #moving_shapes(rings,ringcolors,-1,.1)
 
-        #pumpkin(30)
+        pumpkin(0)
 
         #random_colors()
 
@@ -463,16 +559,23 @@ try:
 
         #ant_status_ew(3)
         #ant_status_ns(3)
-        ant_status_scaling()
-
+        #status = ant_status_scaling_test(status)
+        #ant_status_scaling()
         #adopt_antenna()
 
         #clock()
-        #time.sleep(5)
+        time.sleep(5)
 
         #hera()
 
         #image_mapper('treergb')
+        #seconds = str(datetime.now().time())[6:8]
+        #if seconds=='00':
+        #    status = get_hera_status()
+        #draw_hera_status(status)
+        #draw_time_dot()
+        #time.sleep(60)
+
 
 except KeyboardInterrupt:
     if args.clear:

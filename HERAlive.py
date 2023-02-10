@@ -139,7 +139,6 @@ def ant_status_scaling():
             elif int(float(e_spectra))>=-45 and int(float(n_spectra))>=-45:
                 avg_spectra = (float(e_spectra)+float(n_spectra))/2
                 r,g,b = colorscale(avg_spectra,-100,-10)
-                print(r,g,b)
                 strip.setPixelColorRGB(scheme[j],r,g,b) #good, scaled green to yellow
             elif int(float(e_spectra))<-45 or int(float(n_spectra))<-45: strip.setPixelColorRGB(scheme[j],255,50,0) # bad, red
             elif int(float(e_spectra))>-20 or int(float(n_spectra))>-20: strip.setPixelColorRGB(scheme[j],255,50,0) # bad, red
