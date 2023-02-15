@@ -12,7 +12,8 @@ import math
 import random
 import matplotlib.pyplot as plt
 import matplotlib.colors as clr
-import urllib2
+import urllib3 as urllib2
+import board
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-c', '--clear', action='store_true', help='clear the display on exit')
@@ -20,7 +21,7 @@ args = parser.parse_args()
 
 # LED strip configuration:
 LED_COUNT      = 320     # Number of LED pixels.
-LED_PIN        = 18      # GPIO pin connected to the pixels (18 uses PWM!).
+LED_PIN        = board.D18   # GPIO pin connected to the pixels (18 uses PWM!).
 LED_FREQ_HZ    = 800000  # LED signal frequency in hertz (usually 800khz)
 LED_DMA        = 10      # DMA channel to use for generating signal (try 10)
 LED_BRIGHTNESS = 55     # Set to 0 for darkest and 255 for brightest
@@ -193,22 +194,22 @@ ringcolors = [red,orange,yellow,lime,green,turq,cyan,blue,indigo,purple,pink]
 
 def clear():
 # Turns off all LEDs.
-    for i in range(LED_COUNT): strip.setPixelColorRGB(i,0,0,0)
+    strip.fill((0,0,0))
     strip.show()
 
 def pulse(lights,r,g,b,scale):
 # Makes a list of lights "breathe".
     for i in list(reversed(np.arange(scale))) + list(np.arange(scale)):
-        for j in lights: strip.setPixelColorRGB(j,int(r*(i/float(scale))),int(g*(i/float(scale))),int(b*(i/float(scale))))
+        for j in lights: strip[j] =(j,int(r*(i/float(scale))),int(g*(i/float(scale))),int(b*(i/float(scale))))
         strip.show()
     time.sleep(1)
 
 def flash(lights,r,g,b,ontime,offtime):
 # Makes a list of lights turn off and on rapidly.
-    for i in lights: strip.setPixelColorRGB(i,r,g,b)
+    for i in lights: strip[i] = (r,g,b)
     strip.show()
     time.sleep(ontime)
-    for i in lights: strip.setPixelColorRGB(i,0,0,0)
+    for i in lights: strip[i] = (0,0,0)
     strip.show()
     time.sleep(offtime)
 
@@ -218,7 +219,7 @@ def next_shape(shapes,colors,direction):
 # The list of shapes and the list of colors must be the same length.
     for i in range(LED_COUNT):
         for j,k in enumerate(shapes):
-            if i in k: strip.setPixelColorRGB(i,colors[j][0],colors[j][1],colors[j][2])
+            if i in k: strip[i] = (colors[j][0],colors[j][1],colors[j][2])
     strip.show()
     colors = colors[direction::] + colors[:direction:]
     return colors
@@ -236,15 +237,15 @@ def pumpkin(waittime):
 # Displays a Jack-O-Lantern face, spooky!
     print('Displaying Pumpkin')
     for i in range(LED_COUNT):
-        if i in pumpkin_face: strip.setPixelColorRGB(i,25,25,25)
-        elif i in pumpkin_stem: strip.setPixelColorRGB(i,0,255,0)
-        else: strip.setPixelColorRGB(i,255,65,0)
+        if i in pumpkin_face: strip[i] = (25,25,25)
+        elif i in pumpkin_stem: strip[i] = (0,255,0)
+        else: strip[i] = (255,65,0)
     strip.show()
     time.sleep(waittime)
 
 def random_colors():
 # Sets each antenna to a random color.
-    for i in range(LED_COUNT): strip.setPixelColorRGB(i,random.randrange(0,255,1),random.randrange(0,255,1),random.randrange(0,255,1))
+    for i in range(LED_COUNT): strip[i] = (random.randrange(0,255,1),random.randrange(0,255,1),random.randrange(0,255,1))
     strip.show()
     time.sleep(2)
 
@@ -254,15 +255,15 @@ def ant_sequence():
     clear()
     print('Loop 1')
     for i in range(LED_COUNT):
-        strip.setPixelColorRGB(scheme[i],255,0,0)
+        strip[scheme[i]] = (255,0,0)
         strip.show()
     print('Loop 2')
     for i in range(LED_COUNT):
-        strip.setPixelColorRGB(scheme[i],0,255,0)
+        strip[scheme[i]] = (0,255,0)
         strip.show()
     print('Loop 3')
     for i in range(LED_COUNT):
-        strip.setPixelColorRGB(scheme[i],0,0,255)
+        strip[scheme[i]] = (0,0,255)
         strip.show()
 
 def ant_status_ew(pulses):
@@ -275,15 +276,15 @@ def ant_status_ew(pulses):
         antnum = int(antname[2:len(antname)-1])
         antdir = antname[len(antname)-1:len(antname)]
         if antdir=='e' and -1<antnum<320:
-            if pd.isnull(i[1])==True: strip.setPixelColorRGB(scheme[antnum],255,127,0) # weird nan, orange
-            elif i[1]=='CONST': strip.setPixelColorRGB(scheme[antnum],80,0,255) # offline, blue
-            elif i[1]=='OFF' : strip.setPixelColorRGB(scheme[antnum],0,0,0) # not built, off
+            if pd.isnull(i[1])==True: strip[scheme[antnum]] = (255,127,0) # weird nan, orange
+            elif i[1]=='CONST': strip[scheme[antnum]] = (80,0,255) # offline, blue
+            elif i[1]=='OFF' : strip[scheme[antnum]] = (0,0,0) # not built, off
             else:
-                if int(float(i[1]))>=15: strip.setPixelColorRGB(scheme[antnum],0,255,0) # good, green
+                if int(float(i[1]))>=15: strip[scheme[antnum]] = (0,255,0) # good, green
                 elif int(float(i[1]))<15:
-                    strip.setPixelColorRGB(scheme[antnum],255,50,0) # bad, red
+                    strip[scheme[antnum]] = (255,50,0) # bad, red
                     red_lights.append(scheme[antnum])
-                else: strip.setPixelColorRGB(scheme[antnum],0,0,0) # not in csv, off
+                else: strip[scheme[antnum]] = (0,0,0) # not in csv, off
     print('Initial Color')
     strip.show()
     counter = 0
@@ -388,6 +389,10 @@ def ant_status_scaling():
     for k in sec_ring: strip.setPixelColorRGB(secs_dict[seconds],200,200,200)
     strip.show()    
     time.sleep(.75)
+
+################################
+#          USE THIS ONE
+################################
 def draw_hera_status(status):
       #input a status array (numpy with columns)
       #draw it on the led board
@@ -405,15 +410,15 @@ def draw_hera_status(status):
         e_spectra = e_status[j][6]
         n_spectra = n_status[j][6]
 
-        if e_constructed==False or n_constructed==False: strip.setPixelColorRGB(scheme[j],0,0,0) # not built, off
+        if e_constructed==False or n_constructed==False: strip[scheme[j]] = (0,0,0) # not built, off
         else:
-            if pd.isnull(e_spectra)==True or pd.isnull(n_spectra)==True: strip.setPixelColorRGB(scheme[j],0,127,255) # offline, blue
+            if pd.isnull(e_spectra)==True or pd.isnull(n_spectra)==True: strip[scheme[j]] = (0,127,255) # offline, blue
             elif int(float(e_spectra))>=-45 and int(float(n_spectra))>=-45:
                 avg_spectra = (float(e_spectra)+float(n_spectra))/2
                 r,g,b = colorscale(avg_spectra,-100,-10)
-                strip.setPixelColorRGB(scheme[j],r,g,b) #good, scaled green to yellow
-            elif int(float(e_spectra))<-45 or int(float(n_spectra))<-45: strip.setPixelColorRGB(scheme[j],255,50,0) # bad, red
-            elif int(float(e_spectra))>-20 or int(float(n_spectra))>-20: strip.setPixelColorRGB(scheme[j],255,50,0) # bad, red
+                strip[scheme[j]] = (r,g,b) #good, scaled green to yellow
+            elif int(float(e_spectra))<-45 or int(float(n_spectra))<-45: strip[scheme[j]] = (255,50,0) # bad, red
+            elif int(float(e_spectra))>-20 or int(float(n_spectra))>-20: strip[scheme[j]] = (255,50,0) # bad, red
             #else: strip.setPixelColorRGB(scheme[j],0,0,0) # not in csv, off
 
             strip.show()
@@ -539,8 +544,9 @@ def image_mapper(file):
 
 # main code
 print('Starting')
-strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL)
-strip.begin()
+#strip = NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL)
+strip = NeoPixel(board.D18, LED_COUNT, brightness=LED_BRIGHTNESS, auto_write=True)
+#strip.begin()
 
 try:
     status = np.empty((700,13))
