@@ -1,0 +1,12 @@
+name: hera-led
+channels: 
+ - conda-forge
+ - defaults
+dependencies:
+  - pandas
+  - numpy
+  - matplotlib
+  - urllib3
+  - pip
+  - pip:
+     - adafruit-circuitpython-neopixel
