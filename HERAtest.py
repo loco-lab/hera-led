@@ -398,6 +398,7 @@ def draw_hera_status(status):
       #draw it on the led board
     e_status = np.empty((0,13))
     n_status = np.empty((0,13))
+    print(status.shape)
     for i in status:
         antnum = i[0]
         antpol = i[1]
@@ -405,10 +406,14 @@ def draw_hera_status(status):
         elif antpol=='n' and -1<antnum<320: n_status = np.append(n_status,[i],axis=0)
 
     for j in range(320):
-        e_constructed = e_status[j][2]
-        n_constructed = n_status[j][2]
-        e_spectra = e_status[j][6]
-        n_spectra = n_status[j][6]
+        try:
+            e_constructed = e_status[j][2]
+            n_constructed = n_status[j][2]
+            e_spectra = e_status[j][6]
+            n_spectra = n_status[j][6]
+        except(IndexError):
+            print("antenna {{j}} not found, ignoring")
+            continue
 
         if e_constructed==False or n_constructed==False: strip[scheme[j]] = (0,0,0) # not built, off
         else:
@@ -421,12 +426,12 @@ def draw_hera_status(status):
             elif int(float(e_spectra))>-20 or int(float(n_spectra))>-20: strip[scheme[j]] = (255,50,0) # bad, red
             #else: strip.setPixelColorRGB(scheme[j],0,0,0) # not in csv, off
 
-            strip.show()
+            #strip.show()
 def draw_time_dot():
     #put a dot on the edge of the HERA board to indicate seconds.
     seconds = str(datetime.now().time())[6:8]
     for k in sec_ring: 
-        strip.setPixelColorRGB(secs_dict[seconds],200,200,200)
+        strip[secs_dict[seconds]] = (200,200,200)
 def get_hera_status():
      return np.array(pd.read_csv('http://heranow.reionization.org/media/ant_stats.csv', 
                    header=0, 
@@ -545,11 +550,11 @@ def image_mapper(file):
 # main code
 print('Starting')
 #strip = NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL)
-strip = NeoPixel(board.D18, LED_COUNT, brightness=LED_BRIGHTNESS, auto_write=True)
+strip = NeoPixel(board.D18, LED_COUNT, brightness=LED_BRIGHTNESS, auto_write=True,pixel_order='RGB')
 #strip.begin()
-
 try:
-    status = np.empty((700,13))
+    #status = np.empty((700,13))
+    status = get_hera_status()
     while True:
         #moving_shapes(sixths,rainbowcolors,-1,.1)
         #moving_shapes(sixths,rainbowcolors,-1,.1)
@@ -557,7 +562,7 @@ try:
         #moving_shapes(rings,ringcolors,1,.1)
         #moving_shapes(rings,ringcolors,-1,.1)
 
-        pumpkin(0)
+        #pumpkin(0)
 
         #random_colors()
 
@@ -570,17 +575,17 @@ try:
         #adopt_antenna()
 
         #clock()
-        time.sleep(5)
+        #time.sleep(5)
 
         #hera()
 
         #image_mapper('treergb')
-        #seconds = str(datetime.now().time())[6:8]
-        #if seconds=='00':
-        #    status = get_hera_status()
-        #draw_hera_status(status)
-        #draw_time_dot()
-        #time.sleep(60)
+        seconds = str(datetime.now().time())[6:8]
+        if seconds=='00':
+            status = get_hera_status()
+        draw_hera_status(status)
+        draw_time_dot()
+        time.sleep(1)
 
 
 except KeyboardInterrupt:
